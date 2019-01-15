@@ -5,14 +5,13 @@ import main.model.ArriverExecutor;
 
 import javax.swing.*;
 import javax.swing.text.NumberFormatter;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.text.NumberFormat;
 import java.time.LocalTime;
 import java.util.Map;
 
 public class MyFrame extends JFrame {
-    private JFrame f;
 
     public MyFrame() {
         JSpinner busHourMin = buildTime(23);
@@ -41,19 +40,28 @@ public class MyFrame extends JFrame {
 
         buildLabel("Liczba próbek: ").setBounds(20, 150, 230, 30);
         JFormattedTextField numberOfSamples = buildNumberOfSamples();
+        numberOfSamples.setValue(1);
         numberOfSamples.setBounds(200, 150, 50, 30);
         add(numberOfSamples);
 
         JButton b = new JButton("Simulate");
         b.setBounds(20,200,100, 40);
         b.addActionListener(e -> {
+            LocalTime busMin = LocalTime.of((int) busHourMin.getValue(), (int) busMinutesMin.getValue());
+            LocalTime busMax = LocalTime.of((int) busHourMax.getValue(), (int) busMinutesMax.getValue());
+            LocalTime jasiuMin = LocalTime.of((int) jasiuHourMin.getValue(), (int) jasiuMinutesMin.getValue());
+            LocalTime jasiuMax = LocalTime.of((int) jasiuHourMax.getValue(), (int) jasiuMinutesMax.getValue());
+            if(busMax.isBefore(busMin) || jasiuMax.isBefore(jasiuMin)) {
+                JOptionPane.showMessageDialog(null, "Podano złe godziny przyjazu");
+                return;
+            }
             Arriver bus = new Arriver(
-                    LocalTime.of((int) busHourMin.getValue(), (int) busMinutesMin.getValue()),
-                    LocalTime.of((int) busHourMax.getValue(), (int) busMinutesMax.getValue())
+                    busMin,
+                    busMax
             );
             Arriver jasiu = new Arriver(
-                    LocalTime.of((int) jasiuHourMin.getValue(), (int) jasiuMinutesMin.getValue()),
-                    LocalTime.of((int) jasiuHourMax.getValue(), (int) jasiuMinutesMax.getValue())
+                    jasiuMin,
+                    jasiuMax
             );
             int numberOfSamplesValue = (int) numberOfSamples.getValue();
             Map<Boolean, Long> result = ArriverExecutor.arriveTimes(bus, jasiu, numberOfSamplesValue);
@@ -76,6 +84,14 @@ public class MyFrame extends JFrame {
                         1);
         JSpinner spinner = new JSpinner(value);
         add(spinner);
+        JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor)spinner.getEditor();
+        JTextField textField = editor.getTextField();
+        textField.addFocusListener( new FocusAdapter() {
+            public void focusGained(final FocusEvent e) {
+                JTextField tf = (JTextField)e.getSource();
+                tf.selectAll();
+            }
+        });
         return spinner;
     }
 
@@ -89,7 +105,7 @@ public class MyFrame extends JFrame {
         NumberFormat format = NumberFormat.getInstance();
         NumberFormatter formatter = new NumberFormatter(format);
         formatter.setValueClass(Integer.class);
-        formatter.setMinimum(0);
+        formatter.setMinimum(1);
         formatter.setMaximum(Integer.MAX_VALUE);
         formatter.setAllowsInvalid(false);
         formatter.setCommitsOnValidEdit(true);
